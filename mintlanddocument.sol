@@ -3,8 +3,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ECDSA.sol";
 
 contract LandDocumentNFT is ERC721, Ownable {
+    using ECDSA for bytes32;
+
     struct Memorial {
         uint256 entryDate;
         uint256 instrumentDate;
@@ -14,7 +17,7 @@ contract LandDocumentNFT is ERC721, Ownable {
 
     struct Location {
         string projection;
-        string _block;
+        string block;
         string parcel;
         string locality;
         string district;
@@ -56,12 +59,15 @@ contract LandDocumentNFT is ERC721, Ownable {
         string memory fromCoordinates,
         string memory toCoordinates,
         string memory bearing,
-        string memory imageUrl
-    ) public onlyOwner {
-        _mint(to, tokenId);
+        string memory imageUrl,
+        bytes memory ownerSignature
+    ) public {
+        bytes32 messageHash = keccak256(abi.encodePacked(tokenId, msg.sender));
+        require(messageHash.toEthSignedMessageHash().recover(ownerSignature) == msg.sender, "Invalid owner signature");
 
+        _mint(to, tokenId);
         memorials[tokenId] = Memorial(entryDate, instrumentDate, registrationDate, registrationNumber);
-        locations[tokenId] = Location(projection, _block, parcel, locality, district, region, area);
+        locations[tokenId] = Location(projection, block, parcel, locality, district, region, area);
         planData[tokenId] = PlanData(fromCoordinates, toCoordinates, bearing);
         landMaps[tokenId] = LandMap(imageUrl);
     }
